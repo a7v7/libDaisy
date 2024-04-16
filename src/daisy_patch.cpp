@@ -34,7 +34,6 @@ void DaisyPatch::Init(bool boost)
     seed.Configure();
     seed.Init(boost);
     InitAudio();
-    InitDisplay();
     InitCvOutputs();
     InitEncoder();
     InitGates();

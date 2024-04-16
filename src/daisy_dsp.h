@@ -1,22 +1,20 @@
 #pragma once
-#ifndef DSY_PATCH_BSP_H
-#define DSY_PATCH_BSP_H
 #include "daisy_seed.h"
 #include "dev/oled_ssd130x.h"
 
 namespace daisy
 {
 /**
-    @brief Class that handles initializing all of the hardware specific to the Daisy Patch Board. \n 
+    @brief Class that handles initializing all of the hardware specific to the Daisy DSP Board. \n
     Helper funtions are also in place to provide easy access to built-in controls and peripherals.
-    @author Stephen Hensley
-    @date November 2019
+    @author A.C. Verbeck
+    @date April 2024
     @ingroup boards
 */
-class DaisyPatch
+class DaisyDSP
 {
   public:
-    /** Enum of Ctrls to represent the four CV/Knob combos on the Patch
+    /** Enum of Ctrls to represent the four CV/Knob combos on the DSP
      */
     enum Ctrl
     {
@@ -27,20 +25,12 @@ class DaisyPatch
         CTRL_LAST, /**< */
     };
 
-    /** Daisy patch gate inputs */
-    enum GateInput
-    {
-        GATE_IN_1,    /**< */
-        GATE_IN_2,    /** <*/
-        GATE_IN_LAST, /**< */
-    };
-
     /** Constructor */
-    DaisyPatch() {}
+    DaisyDSP() {}
     /** Destructor */
-    ~DaisyPatch() {}
+    ~DaisyDSP() {}
 
-    /** Initializes the daisy seed, and patch hardware.*/
+    /** Initializes the daisy seed, and DSP hardware.*/
     void Init(bool boost = false);
 
     /** 
@@ -117,27 +107,15 @@ class DaisyPatch
     DaisySeed       seed;                             /**< Seed object */
     Encoder         encoder;                          /**< Encoder object */
     AnalogControl   controls[CTRL_LAST];              /**< Array of controls*/
-    GateIn          gate_input[GATE_IN_LAST];         /**< Gate inputs  */
-    MidiUartHandler midi;                             /**< Handles midi*/
     OledDisplay<SSD130x4WireSpi128x64Driver> display; /**< & */
-
-    // TODO: Add class for Gate output
-    dsy_gpio gate_output; /**< &  */
-
 
   private:
     void SetHidUpdateRates();
-    void InitAudio();
     void InitControls();
     void InitDisplay();
-    void InitMidi();
-    void InitCvOutputs();
     void InitEncoder();
-    void InitGates();
 
     uint32_t screen_update_last_, screen_update_period_;
 };
 
 } // namespace daisy
-
-#endif

@@ -23,6 +23,7 @@ usbh/usbh_conf
 CPP_MODULES = \
 daisy_seed \
 daisy_pod \
+daisy_dsp \
 daisy_patch \
 daisy_petal \
 daisy_field \
