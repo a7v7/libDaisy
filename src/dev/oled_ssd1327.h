@@ -102,96 +102,59 @@ class SSD1327Driver
     {
         transport_.Init(config.transport_config);
 
-        // Init routine...
+        transport_.SendCommand(0xae);	// turn off oled panel
 
-        // Display Off
-        transport_.SendCommand(0xaE);
-        // Dimension dependent commands...
-        switch(height)
-        {
-            case 16:
-                // Display Clock Divide Ratio
-                transport_.SendCommand(0xD5);
-                transport_.SendCommand(0x60);
-                // Multiplex Ratio
-                transport_.SendCommand(0xA8);
-                transport_.SendCommand(0x0F);
-                // COM Pins
-                transport_.SendCommand(0xDA);
-                transport_.SendCommand(0x02);
-                break;
-            case 32:
-                // Display Clock Divide Ratio
-                transport_.SendCommand(0xD5);
-                transport_.SendCommand(0x80);
-                // Multiplex Ratio
-                transport_.SendCommand(0xA8);
-                transport_.SendCommand(0x1F);
-                // COM Pins
-                transport_.SendCommand(0xDA);
-                if(width == 64)
-                {
-                    transport_.SendCommand(0x12);
-                }
-                else
-                {
-                    transport_.SendCommand(0x02);
-                }
+        transport_.SendCommand(0x15);   // set column address
+        transport_.SendCommand(0x00);   // start column   0
+        transport_.SendCommand(0x7f);   // end column   127
 
-                break;
-            case 48:
-                // Display Clock Divide Ratio
-                transport_.SendCommand(0xD5);
-                transport_.SendCommand(0x80);
-                // Multiplex Ratio
-                transport_.SendCommand(0xA8);
-                transport_.SendCommand(0x2F);
-                // COM Pins
-                transport_.SendCommand(0xDA);
-                transport_.SendCommand(0x12);
-                break;
-            default: // 128
-                // Display Clock Divide Ratio
-                transport_.SendCommand(0xD5);
-                transport_.SendCommand(0x80);
-                // Multiplex Ratio
-                transport_.SendCommand(0xA8);
-                transport_.SendCommand(0x3F);
-                // COM Pins
-                transport_.SendCommand(0xDA);
-                transport_.SendCommand(0x12);
-                break;
-        }
+        transport_.SendCommand(0x75);   // set row address
+        transport_.SendCommand(0x00);   // start row   0
+        transport_.SendCommand(0x7f);   // end row   127
 
-        // Display Offset
-        transport_.SendCommand(0xD3);
+        transport_.SendCommand(0x81);  	// set contrast control
+        transport_.SendCommand(0x80);
+
+        transport_.SendCommand(0xa0);   // gment remap
+        transport_.SendCommand(0x51);	// 51
+
+        transport_.SendCommand(0xa1);  	// start line
         transport_.SendCommand(0x00);
-        // Start Line Address
-        transport_.SendCommand(0x40);
-        // Normal Display
-        transport_.SendCommand(0xA6);
-        // All On Resume
-        transport_.SendCommand(0xA4);
-        // Charge Pump
-        transport_.SendCommand(0x8D);
-        transport_.SendCommand(0x14);
-        // Set Segment Remap
-        transport_.SendCommand(0xA1);
-        // COM Output Scan Direction
-        transport_.SendCommand(0xC8);
-        // Contrast Control
-        transport_.SendCommand(0x81);
-        transport_.SendCommand(0x8F);
-        // Pre Charge
-        transport_.SendCommand(0xD9);
-        transport_.SendCommand(0x25);
-        // VCOM Detect
-        transport_.SendCommand(0xDB);
-        transport_.SendCommand(0x34);
 
+        transport_.SendCommand(0xa2);  	// display offset
+        transport_.SendCommand(0x00);
 
-        // Display On
-        transport_.SendCommand(0xAF); //--turn on oled panel
+        transport_.SendCommand(0xa4);   // rmal display
+        transport_.SendCommand(0xa8);   // set multiplex ratio
+        transport_.SendCommand(0x7f);
+
+        transport_.SendCommand(0xb1);  	// set phase leghth
+        transport_.SendCommand(0xf1);
+
+        transport_.SendCommand(0xb3);  	// set dclk
+        transport_.SendCommand(0x00);  	// 80Hz:0xc1 / 90Hz:0xe1 / 100Hz:0x00 / 110Hz:0x30 / 120Hz:0x50 / 130Hz:0x70
+
+        transport_.SendCommand(0xab);
+        transport_.SendCommand(0x01);
+
+        transport_.SendCommand(0xb6);  	// set phase length
+        transport_.SendCommand(0x0f);
+
+        transport_.SendCommand(0xbe);
+        transport_.SendCommand(0x0f);
+
+        transport_.SendCommand(0xbc);
+        transport_.SendCommand(0x08);
+
+        transport_.SendCommand(0xd5);
+        transport_.SendCommand(0x62);
+
+        transport_.SendCommand(0xfd);
+        transport_.SendCommand(0x12);
+
+        System::Delay(200);				//	wait 200ms
+
+        transport_.SendCommand(0xaf);	// turn on display
     };
 
     size_t Width() const { return width; };
@@ -199,13 +162,14 @@ class SSD1327Driver
 
     void DrawPixel(uint_fast8_t x, uint_fast8_t y, bool on)
     {
-        if(x >= width || y >= height)
+        if ((x >= width) || (y >= height))
             return;
-        if(on)
-            buffer_[x + (y / 8) * width] |= (1 << (y % 8));
+
+        if (on)
+            buffer_[x + (y / 2) * width] |= color_;
         else
-            buffer_[x + (y / 8) * width] &= ~(1 << (y % 8));
-    }
+            buffer_[x + (y / 2) * width] = 0;
+    };
 
     void Fill(bool on)
     {
@@ -220,26 +184,32 @@ class SSD1327Driver
     */
     void Update()
     {
-        uint8_t i;
-        uint8_t high_column_addr;
-        switch(height)
-        {
-            case 32: high_column_addr = 0x12; break;
+        uint8_t *pBuf = buffer_;
 
-            default: high_column_addr = 0x10; break;
-        }
-        for(i = 0; i < height; i++)
-        {
-            transport_.SendCommand(0xB0 + i);
-            transport_.SendCommand(0x00);
-            transport_.SendCommand(high_column_addr);
-            transport_.SendData(&buffer_[width * i], width);
+        transport_.SendCommand(0x15);	// column
+        transport_.SendCommand(0x00);
+        transport_.SendCommand(width-1);
+
+        transport_.SendCommand(0x75);	// row
+        transport_.SendCommand(0x00);
+        transport_.SendCommand(height-1);
+
+        //write data
+        for (uint32_t line = 0; line < height; line++) {
+        	transport_.SendData(pBuf, width/2);
+            pBuf+=width/2;
         }
     };
 
-  private:
+    void Set_Color(uint8_t in_col)
+    {
+    	color_ = in_col & 0x0f;
+    };
+
+  protected:
     Transport transport_;
     uint8_t   buffer_[width * height];
+    uint8_t   color_;
 };
 
 /**
