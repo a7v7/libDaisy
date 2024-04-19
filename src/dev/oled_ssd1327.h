@@ -100,13 +100,12 @@ class SSD1327Driver
 
     void Init(Config config)
     {
+        color_ = 0x0f;
         transport_.Init(config.transport_config);
-
-        transport_.SendCommand(0xae);	// turn off oled panel
 
         transport_.SendCommand(0x15);   // set column address
         transport_.SendCommand(0x00);   // start column   0
-        transport_.SendCommand(0x7f);   // end column   127
+        transport_.SendCommand(0x3f);   // end column 63*2 (two pixels / byte)
 
         transport_.SendCommand(0x75);   // set row address
         transport_.SendCommand(0x00);   // start row   0
@@ -115,8 +114,8 @@ class SSD1327Driver
         transport_.SendCommand(0x81);  	// set contrast control
         transport_.SendCommand(0x80);
 
-        transport_.SendCommand(0xa0);   // gment remap
-        transport_.SendCommand(0x51);	// 51
+        transport_.SendCommand(0xa0);   // Set Re-map (0x51)
+        transport_.SendCommand(0x51);	// Column Address Remapping, COM Remapping, Splitting of Odd / Even COM Signals
 
         transport_.SendCommand(0xa1);  	// start line
         transport_.SendCommand(0x00);
@@ -124,37 +123,37 @@ class SSD1327Driver
         transport_.SendCommand(0xa2);  	// display offset
         transport_.SendCommand(0x00);
 
-        transport_.SendCommand(0xa4);   // rmal display
+        transport_.SendCommand(0xa4);   // normal display
         transport_.SendCommand(0xa8);   // set multiplex ratio
         transport_.SendCommand(0x7f);
 
-        transport_.SendCommand(0xb1);  	// set phase leghth
+        transport_.SendCommand(0xb1);  	// set phase length
         transport_.SendCommand(0xf1);
 
         transport_.SendCommand(0xb3);  	// set dclk
         transport_.SendCommand(0x00);  	// 80Hz:0xc1 / 90Hz:0xe1 / 100Hz:0x00 / 110Hz:0x30 / 120Hz:0x50 / 130Hz:0x70
 
-        transport_.SendCommand(0xab);
+        transport_.SendCommand(0xab);	// Function Selection A
         transport_.SendCommand(0x01);
 
         transport_.SendCommand(0xb6);  	// set phase length
         transport_.SendCommand(0x0f);
 
-        transport_.SendCommand(0xbe);
+        transport_.SendCommand(0xbe);	// Set VCOMH
         transport_.SendCommand(0x0f);
 
-        transport_.SendCommand(0xbc);
+        transport_.SendCommand(0xbc);	// Set Pre-charge voltage
         transport_.SendCommand(0x08);
 
-        transport_.SendCommand(0xd5);
-        transport_.SendCommand(0x62);
+        transport_.SendCommand(0xd5);	// Function Selection B
+        transport_.SendCommand(0x62);	// Enable second pre-charge
 
-        transport_.SendCommand(0xfd);
+        transport_.SendCommand(0xfd);	// unlock command
         transport_.SendCommand(0x12);
 
         System::Delay(200);				//	wait 200ms
-
         transport_.SendCommand(0xaf);	// turn on display
+        Fill(false);
     };
 
     size_t Width() const { return width; };
@@ -162,13 +161,32 @@ class SSD1327Driver
 
     void DrawPixel(uint_fast8_t x, uint_fast8_t y, bool on)
     {
+    	uint8_t pixel;
+    	uint32_t line = width/2;
+
         if ((x >= width) || (y >= height))
             return;
 
-        if (on)
-            buffer_[x + (y / 2) * width] |= color_;
-        else
-            buffer_[x + (y / 2) * width] = 0;
+        if (on) {
+        	pixel = buffer_[y * line + (x / 2)];
+        	if (x % 2) {
+        		pixel &= 0xf0;
+        		pixel |= color_;
+        	} else {
+        		pixel &= 0x0f;
+        		pixel |= color_ << 4;
+        	}
+            buffer_[y * line + (x / 2)] = pixel;
+        }
+        else {
+        	pixel = buffer_[y * line + (x / 2)];
+        	if (x % 2) {
+        		pixel &= 0xf0;
+        	} else {
+        		pixel &= 0x0f;
+        	}
+            buffer_[y * line + (x / 2)] = pixel;
+        }
     };
 
     void Fill(bool on)
@@ -188,7 +206,7 @@ class SSD1327Driver
 
         transport_.SendCommand(0x15);	// column
         transport_.SendCommand(0x00);
-        transport_.SendCommand(width-1);
+        transport_.SendCommand((width/2)-1);
 
         transport_.SendCommand(0x75);	// row
         transport_.SendCommand(0x00);
@@ -196,7 +214,7 @@ class SSD1327Driver
 
         //write data
         for (uint32_t line = 0; line < height; line++) {
-        	transport_.SendData(pBuf, width/2);
+        	transport_.SendData(pBuf, (width/2));
             pBuf+=width/2;
         }
     };
@@ -208,7 +226,7 @@ class SSD1327Driver
 
   protected:
     Transport transport_;
-    uint8_t   buffer_[width * height];
+    uint8_t   buffer_[width/2 * height];
     uint8_t   color_;
 };
 
