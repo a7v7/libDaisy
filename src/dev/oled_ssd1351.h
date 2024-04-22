@@ -4,6 +4,15 @@
 #include "per/gpio.h"
 #include "sys/system.h"
 
+#define	oled_white		0xffff
+#define	oled_black		0x0000
+#define	oled_red		0x00f1
+#define	oled_green		0xe007
+#define	oled_blue		0x1f00
+#define	oled_cyan		(oled_green|oled_blue)
+#define	oled_yellow		(oled_green|oled_red)
+#define	oled_magenta	(oled_red|oled_blue)
+
 namespace daisy
 {
 
@@ -78,6 +87,7 @@ class SSD13514WireSpiTransport
         dsy_gpio_write(&pin_dc_, 1);
         spi_.BlockingTransmit(buff, size);
     };
+
     void SendData(uint8_t data)
     {
         dsy_gpio_write(&pin_dc_, 1);
@@ -105,72 +115,77 @@ class SSD1351Driver
 
     void Init(Config config)
     {
-        fg_color_ = 0xffff;
-        bg_color_ = 0x0000;
+        fg_color_ = oled_magenta;
+        bg_color_ = oled_black;
         transport_.Init(config.transport_config);
 
-    	transport_.SendCommand(0xae);	// display off
-    	transport_.SendCommand(0xa4);	// Normal Display mode
+    	transport_.SendCommand(0xfd);		// lock IC
+    	transport_.SendData(0x12);
+    	transport_.SendCommand(0xfd);		// unlock IC
+    	transport_.SendData(0xb1);     		//
 
-    	transport_.SendCommand(0x15);	// set column address
-    	transport_.SendData(0x00);     	// column address start 00
-    	transport_.SendData(0x7f);     	// column address end 95
-    	transport_.SendCommand(0x75);	// set row address
-    	transport_.SendData(0x00);     	// row address start 00
-    	transport_.SendData(0x7f);     	// row address end 63
+        transport_.SendCommand(0xae);		// display off
 
-    	transport_.SendCommand(0xB3);
+    	transport_.SendCommand(0x15);		// set column address
+    	transport_.SendData(0x00);     		// column address start 00
+    	transport_.SendData(0x7f);     		// column address end 127
+
+    	transport_.SendCommand(0x75);		// set row address
+    	transport_.SendData(0x00);     		// row address start 00
+    	transport_.SendData(0x7f);     		// row address end 127
+
+    	transport_.SendCommand(0xB3);		// Set Front Clock Divider / Oscillator Frequency
     	transport_.SendData(0xF1);
 
-    	transport_.SendCommand(0xCA);
+    	transport_.SendCommand(0xCA);		// Set Multiplex Ratio
     	transport_.SendData(0x7F);
 
-    	transport_.SendCommand(0xa0);  	// set re-map & data format
-    	transport_.SendData(0x74);     	// Horizontal address increment
+    	transport_.SendCommand(0xa0);  		// Set Re-map & Dual COM Line Mode
+    	transport_.SendData(0x74);			// color mode 64k, enable com split, reverse com scan, color swapped, hz scan
 
-    	transport_.SendCommand(0xa1);  	// set display start line
-    	transport_.SendData(0x00);     	// start 00 line
+    	transport_.SendCommand(0xa1);		// set display start line
+    	transport_.SendData(0x00);     		// line 0
 
-    	transport_.SendCommand(0xa2);  	// set display offset
-    	transport_.SendData(0x00);
+    	transport_.SendCommand(0xa2);  		// set display offset
+    	transport_.SendData(0x00);			// column 0
 
-    	transport_.SendCommand(0xAB);
-    	transport_.SendCommand(0x01);
+    	transport_.SendCommand(0xAB);		// Function Selection
+    	transport_.SendData(0x01);
 
-    	transport_.SendCommand(0xB4);
+    	transport_.SendCommand(0xB4);		// Set Segment Low Voltage
     	transport_.SendData(0xA0);
     	transport_.SendData(0xB5);
     	transport_.SendData(0x55);
 
-    	transport_.SendCommand(0xC1);
+    	transport_.SendCommand(0xC1);		// Set Contrast Current for Color A,B,C
     	transport_.SendData(0xC8);
     	transport_.SendData(0x80);
     	transport_.SendData(0xC0);
 
-    	transport_.SendCommand(0xC7);
+    	transport_.SendCommand(0xC7);		// Master Contrast Current Control
     	transport_.SendData(0x0F);
 
-    	transport_.SendCommand(0xB1);
+    	transport_.SendCommand(0xB1);		// Set Reset (Phase 1) / Pre-charge (Phase 2) period
     	transport_.SendData(0x32);
 
-    	transport_.SendCommand(0xB2);
+    	transport_.SendCommand(0xB2);		// Display Enhancement
     	transport_.SendData(0xA4);
     	transport_.SendData(0x00);
     	transport_.SendData(0x00);
 
-    	transport_.SendCommand(0xBB);
+    	transport_.SendCommand(0xBB);		// Set Pre-charge voltage
     	transport_.SendData(0x17);
 
-    	transport_.SendCommand(0xB6);
+    	transport_.SendCommand(0xB6);		// Set Second Precharge Period
     	transport_.SendData(0x01);
 
-    	transport_.SendCommand(0xBE);
+    	transport_.SendCommand(0xBE);		//	Set VCOMH Voltage
     	transport_.SendData(0x05);
 
-    	transport_.SendCommand(0xA6);
+    	transport_.SendCommand(0xA6);		// Normal display
 
-    	System::Delay(200);				//	wait 200ms
-        transport_.SendCommand(0xaf);	// turn on display
+    	System::Delay(300);					//	wait 300ms
+        transport_.SendCommand(0xaf);		// turn on display
         Fill(false);
     };
 
@@ -203,15 +218,15 @@ class SSD1351Driver
     */
     void Update()
     {
-        transport_.SendCommand(0x15);	// column
-        transport_.SendCommand(0x00);
-        transport_.SendCommand(width-1);
+        transport_.SendCommand(0x15);		// column
+        transport_.SendData(0x00);
+        transport_.SendData(width-1);
 
-        transport_.SendCommand(0x75);	// row
-        transport_.SendCommand(0x00);
-        transport_.SendCommand(height-1);
+        transport_.SendCommand(0x75);		// row
+        transport_.SendData(0x00);
+        transport_.SendData(height-1);
 
-        //write data
+        transport_.SendCommand(0x5c);		// write display buffer
         transport_.SendData((uint8_t*)buffer_, sizeof(buffer_));
     };
 
