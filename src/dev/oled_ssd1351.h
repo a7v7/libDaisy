@@ -78,6 +78,11 @@ class SSD13514WireSpiTransport
         dsy_gpio_write(&pin_dc_, 1);
         spi_.BlockingTransmit(buff, size);
     };
+    void SendData(uint8_t data)
+    {
+        dsy_gpio_write(&pin_dc_, 1);
+        spi_.BlockingTransmit(&data, 1);
+    };
 
   private:
     SpiHandle spi_;
@@ -100,98 +105,73 @@ class SSD1351Driver
 
     void Init(Config config)
     {
+        fg_color_ = 0xffff;
+        bg_color_ = 0x0000;
         transport_.Init(config.transport_config);
 
-        // Init routine...
+    	transport_.SendCommand(0xae);	// display off
+    	transport_.SendCommand(0xa4);	// Normal Display mode
 
-        // Display Off
-        transport_.SendCommand(0xaE);
-        // Dimension dependent commands...
-        switch(height)
-        {
-            case 16:
-                // Display Clock Divide Ratio
-                transport_.SendCommand(0xD5);
-                transport_.SendCommand(0x60);
-                // Multiplex Ratio
-                transport_.SendCommand(0xA8);
-                transport_.SendCommand(0x0F);
-                // COM Pins
-                transport_.SendCommand(0xDA);
-                transport_.SendCommand(0x02);
-                break;
-            case 32:
-                // Display Clock Divide Ratio
-                transport_.SendCommand(0xD5);
-                transport_.SendCommand(0x80);
-                // Multiplex Ratio
-                transport_.SendCommand(0xA8);
-                transport_.SendCommand(0x1F);
-                // COM Pins
-                transport_.SendCommand(0xDA);
-                if(width == 64)
-                {
-                    transport_.SendCommand(0x12);
-                }
-                else
-                {
-                    transport_.SendCommand(0x02);
-                }
+    	transport_.SendCommand(0x15);	// set column address
+    	transport_.SendData(0x00);     	// column address start 00
+    	transport_.SendData(0x7f);     	// column address end 95
+    	transport_.SendCommand(0x75);	// set row address
+    	transport_.SendData(0x00);     	// row address start 00
+    	transport_.SendData(0x7f);     	// row address end 63
 
-                break;
-            case 48:
-                // Display Clock Divide Ratio
-                transport_.SendCommand(0xD5);
-                transport_.SendCommand(0x80);
-                // Multiplex Ratio
-                transport_.SendCommand(0xA8);
-                transport_.SendCommand(0x2F);
-                // COM Pins
-                transport_.SendCommand(0xDA);
-                transport_.SendCommand(0x12);
-                break;
-            default: // 128
-                // Display Clock Divide Ratio
-                transport_.SendCommand(0xD5);
-                transport_.SendCommand(0x80);
-                // Multiplex Ratio
-                transport_.SendCommand(0xA8);
-                transport_.SendCommand(0x3F);
-                // COM Pins
-                transport_.SendCommand(0xDA);
-                transport_.SendCommand(0x12);
-                break;
-        }
+    	transport_.SendCommand(0xB3);
+    	transport_.SendData(0xF1);
 
-        // Display Offset
-        transport_.SendCommand(0xD3);
-        transport_.SendCommand(0x00);
-        // Start Line Address
-        transport_.SendCommand(0x40);
-        // Normal Display
-        transport_.SendCommand(0xA6);
-        // All On Resume
-        transport_.SendCommand(0xA4);
-        // Charge Pump
-        transport_.SendCommand(0x8D);
-        transport_.SendCommand(0x14);
-        // Set Segment Remap
-        transport_.SendCommand(0xA1);
-        // COM Output Scan Direction
-        transport_.SendCommand(0xC8);
-        // Contrast Control
-        transport_.SendCommand(0x81);
-        transport_.SendCommand(0x8F);
-        // Pre Charge
-        transport_.SendCommand(0xD9);
-        transport_.SendCommand(0x25);
-        // VCOM Detect
-        transport_.SendCommand(0xDB);
-        transport_.SendCommand(0x34);
+    	transport_.SendCommand(0xCA);
+    	transport_.SendData(0x7F);
 
+    	transport_.SendCommand(0xa0);  	// set re-map & data format
+    	transport_.SendData(0x74);     	// Horizontal address increment
 
-        // Display On
-        transport_.SendCommand(0xAF); //--turn on oled panel
+    	transport_.SendCommand(0xa1);  	// set display start line
+    	transport_.SendData(0x00);     	// start 00 line
+
+    	transport_.SendCommand(0xa2);  	// set display offset
+    	transport_.SendData(0x00);
+
+    	transport_.SendCommand(0xAB);
+    	transport_.SendCommand(0x01);
+
+    	transport_.SendCommand(0xB4);
+    	transport_.SendData(0xA0);
+    	transport_.SendData(0xB5);
+    	transport_.SendData(0x55);
+
+    	transport_.SendCommand(0xC1);
+    	transport_.SendData(0xC8);
+    	transport_.SendData(0x80);
+    	transport_.SendData(0xC0);
+
+    	transport_.SendCommand(0xC7);
+    	transport_.SendData(0x0F);
+
+    	transport_.SendCommand(0xB1);
+    	transport_.SendData(0x32);
+
+    	transport_.SendCommand(0xB2);
+    	transport_.SendData(0xA4);
+    	transport_.SendData(0x00);
+    	transport_.SendData(0x00);
+
+    	transport_.SendCommand(0xBB);
+    	transport_.SendData(0x17);
+
+    	transport_.SendCommand(0xB6);
+    	transport_.SendData(0x01);
+
+    	transport_.SendCommand(0xBE);
+    	transport_.SendData(0x05);
+
+    	transport_.SendCommand(0xA6);
+
+    	System::Delay(200);				//	wait 200ms
+        transport_.SendCommand(0xaf);	// turn on display
+        Fill(false);
     };
 
     size_t Width() const { return width; };
@@ -199,19 +179,22 @@ class SSD1351Driver
 
     void DrawPixel(uint_fast8_t x, uint_fast8_t y, bool on)
     {
-        if(x >= width || y >= height)
+        if ((x >= width) || (y >= height))
             return;
-        if(on)
-            buffer_[x + (y / 8) * width] |= (1 << (y % 8));
-        else
-            buffer_[x + (y / 8) * width] &= ~(1 << (y % 8));
-    }
+
+        if (on) {
+        	buffer_[(y * width) + x] = fg_color_;
+        }
+        else {
+        	buffer_[(y * width) + x] = bg_color_;
+        }
+    };
 
     void Fill(bool on)
     {
-        for(size_t i = 0; i < sizeof(buffer_); i++)
+        for(size_t i = 0; i < sizeof(buffer_)/2; i++)
         {
-            buffer_[i] = on ? 0xff : 0x00;
+            buffer_[i] = on ? fg_color_ : bg_color_;
         }
     };
 
@@ -220,26 +203,33 @@ class SSD1351Driver
     */
     void Update()
     {
-        uint8_t i;
-        uint8_t high_column_addr;
-        switch(height)
-        {
-            case 32: high_column_addr = 0x12; break;
+        transport_.SendCommand(0x15);	// column
+        transport_.SendCommand(0x00);
+        transport_.SendCommand(width-1);
 
-            default: high_column_addr = 0x10; break;
-        }
-        for(i = 0; i < height; i++)
-        {
-            transport_.SendCommand(0xB0 + i);
-            transport_.SendCommand(0x00);
-            transport_.SendCommand(high_column_addr);
-            transport_.SendData(&buffer_[width * i], width);
-        }
+        transport_.SendCommand(0x75);	// row
+        transport_.SendCommand(0x00);
+        transport_.SendCommand(height-1);
+
+        //write data
+        transport_.SendData((uint8_t*)buffer_, sizeof(buffer_));
     };
 
-  private:
+    void Set_FgColor(uint16_t in_col)
+    {
+    	fg_color_ = in_col;
+    };
+
+    void Set_BgColor(uint16_t in_col)
+    {
+    	bg_color_ = in_col;
+    };
+
+  protected:
     Transport transport_;
-    uint8_t   buffer_[width * height];
+    uint16_t  buffer_[width * height];
+    uint16_t  fg_color_;
+    uint16_t  bg_color_;
 };
 
 /**

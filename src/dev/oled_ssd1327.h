@@ -202,8 +202,6 @@ class SSD1327Driver
     */
     void Update()
     {
-        uint8_t *pBuf = buffer_;
-
         transport_.SendCommand(0x15);	// column
         transport_.SendCommand(0x00);
         transport_.SendCommand((width/2)-1);
@@ -213,10 +211,7 @@ class SSD1327Driver
         transport_.SendCommand(height-1);
 
         //write data
-        for (uint32_t line = 0; line < height; line++) {
-        	transport_.SendData(pBuf, (width/2));
-            pBuf+=width/2;
-        }
+        transport_.SendData(buffer_, 8192);
     };
 
     void Set_Color(uint8_t in_col)
