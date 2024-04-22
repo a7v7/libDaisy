@@ -230,14 +230,25 @@ class SSD1351Driver
         transport_.SendData((uint8_t*)buffer_, sizeof(buffer_));
     };
 
-    void Set_FgColor(uint16_t in_col)
+    void SetColorFG(uint8_t red, uint8_t green, uint8_t blue)
     {
-    	fg_color_ = in_col;
+    	uint16_t t1, t2;
+
+    	fg_color_ = (red & 0x1f) << 11 | (green & 0x3f) << 5 | (blue & 0x1f);
+    	t1 = (fg_color_ >> 8) & 0xff;
+    	t2 = (fg_color_ & 0xff);
+    	fg_color_ = t2<<8 | t1;
+
     };
 
-    void Set_BgColor(uint16_t in_col)
+    void SetColorBG(uint8_t red, uint8_t green, uint8_t blue)
     {
-    	bg_color_ = in_col;
+    	uint16_t t1, t2;
+
+    	bg_color_ = (red & 0x1f) << 11 | (green & 0x3f) << 5 | (blue & 0x1f);
+    	t1 = (bg_color_ >> 8) & 0xff;
+    	t2 = (bg_color_ & 0xff);
+    	bg_color_ = t2<<8 | t1;
     };
 
   protected:
