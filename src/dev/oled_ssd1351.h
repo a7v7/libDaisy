@@ -115,7 +115,7 @@ class SSD1351Driver
 
     void Init(Config config)
     {
-        fg_color_ = oled_magenta;
+        fg_color_ = oled_white;
         bg_color_ = oled_black;
         transport_.Init(config.transport_config);
 
