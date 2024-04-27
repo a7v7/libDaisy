@@ -172,12 +172,7 @@ void DaisyDSP::InitControls()
 
 void DaisyDSP::InitDisplay()
 {
-    OledDisplay<SSD130x4WireSpi128x64Driver>::Config display_config;
-
-    display_config.driver_config.transport_config.pin_config.dc = PIN_OLED_DC;
-    display_config.driver_config.transport_config.pin_config.reset
-        = PIN_OLED_RESET;
-
+	OledColorDisplay<SSD13514WireSpi128x128Driver>::Config display_config;
     display.Init(display_config);
 }
 

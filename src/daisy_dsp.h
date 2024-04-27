@@ -1,6 +1,6 @@
 #pragma once
 #include "daisy_seed.h"
-#include "dev/oled_ssd130x.h"
+#include "dev/oled_ssd1351.h"
 
 namespace daisy
 {
@@ -107,7 +107,7 @@ class DaisyDSP
     DaisySeed       seed;                             /**< Seed object */
     Encoder         encoder;                          /**< Encoder object */
     AnalogControl   controls[CTRL_LAST];              /**< Array of controls*/
-    OledDisplay<SSD130x4WireSpi128x64Driver> display; /**< & */
+    OledColorDisplay<SSD13514WireSpi128x128Driver> display; /**< & */
 
   private:
     void SetHidUpdateRates();
