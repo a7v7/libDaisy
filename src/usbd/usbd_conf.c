@@ -24,6 +24,7 @@
 #include "stm32h7xx_hal.h"
 #include "usbd_def.h"
 #include "usbd_core.h"
+#include "sys/irq_priority.h"
 
 /* USER CODE BEGIN Includes */
 
@@ -99,11 +100,11 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef *pcdHandle)
         __HAL_RCC_USB_OTG_FS_CLK_ENABLE();
 
         /* Peripheral interrupt init */
-        HAL_NVIC_SetPriority(OTG_FS_EP1_OUT_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(OTG_FS_EP1_OUT_IRQn, DSY_IRQ_PRIO_USB, 0);
         HAL_NVIC_EnableIRQ(OTG_FS_EP1_OUT_IRQn);
-        HAL_NVIC_SetPriority(OTG_FS_EP1_IN_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(OTG_FS_EP1_IN_IRQn, DSY_IRQ_PRIO_USB, 0);
         HAL_NVIC_EnableIRQ(OTG_FS_EP1_IN_IRQn);
-        HAL_NVIC_SetPriority(OTG_FS_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(OTG_FS_IRQn, DSY_IRQ_PRIO_USB, 0);
         HAL_NVIC_EnableIRQ(OTG_FS_IRQn);
         /* USER CODE BEGIN USB_OTG_FS_MspInit 1 */
 
@@ -131,11 +132,11 @@ void HAL_PCD_MspInit(PCD_HandleTypeDef *pcdHandle)
         __HAL_RCC_USB_OTG_HS_CLK_ENABLE();
 
         /* Peripheral interrupt init */
-        HAL_NVIC_SetPriority(OTG_HS_EP1_OUT_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(OTG_HS_EP1_OUT_IRQn, DSY_IRQ_PRIO_USB, 0);
         HAL_NVIC_EnableIRQ(OTG_HS_EP1_OUT_IRQn);
-        HAL_NVIC_SetPriority(OTG_HS_EP1_IN_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(OTG_HS_EP1_IN_IRQn, DSY_IRQ_PRIO_USB, 0);
         HAL_NVIC_EnableIRQ(OTG_HS_EP1_IN_IRQn);
-        HAL_NVIC_SetPriority(OTG_HS_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(OTG_HS_IRQn, DSY_IRQ_PRIO_USB, 0);
         HAL_NVIC_EnableIRQ(OTG_HS_IRQn);
         /* USER CODE BEGIN USB_OTG_HS_MspInit 1 */
 

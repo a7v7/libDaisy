@@ -1,6 +1,7 @@
 #ifndef UNIT_TEST
 #include "per/qspi.h"
 #include "sys/system.h"
+#include "sys/irq_priority.h"
 #include "stm32h7xx_hal.h"
 #include "dev/flash_IS25LP080D.h"
 #include "dev/flash_IS25LP064A.h"
@@ -1206,7 +1207,7 @@ extern "C" void HAL_QSPI_MspInit(QSPI_HandleTypeDef* qspiHandle)
             HAL_GPIO_Init(port, &GPIO_InitStruct);
         }
         /* QUADSPI interrupt Init */
-        HAL_NVIC_SetPriority(QUADSPI_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(QUADSPI_IRQn, DSY_IRQ_PRIO_STORAGE, 0);
         HAL_NVIC_EnableIRQ(QUADSPI_IRQn);
     }
 }

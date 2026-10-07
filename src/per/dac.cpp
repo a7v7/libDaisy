@@ -1,4 +1,5 @@
 #include "sys/system.h"
+#include "sys/irq_priority.h"
 #include "per/gpio.h"
 #include "per/tim.h"
 #include "per/dac.h"
@@ -352,7 +353,7 @@ extern "C" void HAL_DAC_MspInit(DAC_HandleTypeDef *hdac)
         dac_handle.InitDma();
 
         // This stuff is more relevant to TIM6, but makes more sense to be enabled here.
-        HAL_NVIC_SetPriority(TIM6_DAC_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(TIM6_DAC_IRQn, DSY_IRQ_PRIO_DAC, 0);
         HAL_NVIC_EnableIRQ(TIM6_DAC_IRQn);
     }
 }

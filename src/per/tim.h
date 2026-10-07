@@ -4,6 +4,7 @@
 
 #include <cstdint>
 #include "stm32h7xx_hal.h"
+#include "sys/irq_priority.h"
 
 namespace daisy
 {
@@ -72,12 +73,21 @@ class TimerHandle
         uint32_t period;
         bool     enable_irq; /**< Enable interrupt for user based callback */
 
+        /** @brief NVIC preemption priority of the callback (0 is highest).
+         *  Defaults to DSY_IRQ_PRIO_TIMER_LOW so the callback never delays
+         *  other interrupts. Use DSY_IRQ_PRIO_TIMER_HIGH for musical timing
+         *  (clocks, gates) - the callback must then be short, and must not
+         *  wait on SPI, I2C, USB or storage transfers.
+         */
+        uint32_t irq_priority;
+
         /* @brief Constructor for default states */
         Config()
         : periph(Peripheral::TIM_2),
           dir(CounterDir::UP),
           period(0xffffffff),
-          enable_irq(false)
+          enable_irq(false),
+          irq_priority(DSY_IRQ_PRIO_TIMER_LOW)
         {
         }
     };

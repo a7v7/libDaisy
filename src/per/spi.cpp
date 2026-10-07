@@ -1,4 +1,5 @@
 #include "per/spi.h"
+#include "sys/irq_priority.h"
 #include "util/scopedirqblocker.h"
 
 // TODO
@@ -990,41 +991,41 @@ void HAL_SPI_MspInit(SPI_HandleTypeDef* spiHandle)
         case SpiHandle::Config::Peripheral::SPI_1:
         {
             __HAL_RCC_SPI1_CLK_ENABLE();
-            HAL_NVIC_SetPriority(SPI1_IRQn, 0, 0);
+            HAL_NVIC_SetPriority(SPI1_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
             HAL_NVIC_EnableIRQ(SPI1_IRQn);
         }
         break;
         case SpiHandle::Config::Peripheral::SPI_2:
         {
             __HAL_RCC_SPI2_CLK_ENABLE();
-            HAL_NVIC_SetPriority(SPI2_IRQn, 0, 0);
+            HAL_NVIC_SetPriority(SPI2_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
             HAL_NVIC_EnableIRQ(SPI2_IRQn);
         }
         break;
         case SpiHandle::Config::Peripheral::SPI_3:
         {
             __HAL_RCC_SPI3_CLK_ENABLE();
-            HAL_NVIC_SetPriority(SPI3_IRQn, 0, 0);
+            HAL_NVIC_SetPriority(SPI3_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
             HAL_NVIC_EnableIRQ(SPI3_IRQn);
         }
         break;
         case SpiHandle::Config::Peripheral::SPI_4:
         {
             __HAL_RCC_SPI4_CLK_ENABLE();
-            HAL_NVIC_SetPriority(SPI4_IRQn, 0, 0);
+            HAL_NVIC_SetPriority(SPI4_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
             HAL_NVIC_EnableIRQ(SPI4_IRQn);
         }
         break;
         case SpiHandle::Config::Peripheral::SPI_5:
         {
             __HAL_RCC_SPI5_CLK_ENABLE();
-            HAL_NVIC_SetPriority(SPI5_IRQn, 0, 0);
+            HAL_NVIC_SetPriority(SPI5_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
             HAL_NVIC_EnableIRQ(SPI5_IRQn);
         }
         break;
         case SpiHandle::Config::Peripheral::SPI_6:
             __HAL_RCC_SPI6_CLK_ENABLE();
-            HAL_NVIC_SetPriority(SPI6_IRQn, 0, 0);
+            HAL_NVIC_SetPriority(SPI6_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
             HAL_NVIC_EnableIRQ(SPI6_IRQn);
             break;
     }

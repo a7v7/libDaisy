@@ -1,4 +1,5 @@
 #include "per/sdmmc.h"
+#include "sys/irq_priority.h"
 
 using namespace daisy;
 
@@ -81,7 +82,7 @@ void HAL_SD_MspInit(SD_HandleTypeDef* sdHandle)
         HAL_GPIO_Init(GPIOD, &GPIO_InitStruct);
 
         /* SDMMC1 interrupt Init */
-        HAL_NVIC_SetPriority(SDMMC1_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(SDMMC1_IRQn, DSY_IRQ_PRIO_STORAGE, 0);
         HAL_NVIC_EnableIRQ(SDMMC1_IRQn);
         /* USER CODE BEGIN SDMMC1_MspInit 1 */
 

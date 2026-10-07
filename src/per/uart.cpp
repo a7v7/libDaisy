@@ -2,6 +2,7 @@
 #include "stm32h7xx_ll_dma.h"
 #include "per/uart.h"
 #include "sys/dma.h"
+#include "sys/irq_priority.h"
 #include "util/ringbuffer.h"
 #include "util/scopedirqblocker.h"
 
@@ -894,7 +895,8 @@ void HAL_UART_MspInit(UART_HandleTypeDef* uartHandle)
                          UART8_IRQn,
                          LPUART1_IRQn};
 
-    HAL_NVIC_SetPriority(types[(int)handle->config_.periph], 0, 0);
+    HAL_NVIC_SetPriority(
+        types[(int)handle->config_.periph], DSY_IRQ_PRIO_UART, 0);
     HAL_NVIC_EnableIRQ(types[(int)handle->config_.periph]);
 }
 

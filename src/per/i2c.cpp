@@ -1,4 +1,5 @@
 #include "per/i2c.h"
+#include "sys/irq_priority.h"
 #include "sys/system.h"
 #include "util/scopedirqblocker.h"
 #include "daisy_core.h"
@@ -744,7 +745,7 @@ extern "C" void HAL_I2C_MspInit(I2C_HandleTypeDef* i2c_handle)
         __HAL_RCC_I2C1_CLK_ENABLE();
         __HAL_RCC_DMA1_CLK_ENABLE();
 
-        HAL_NVIC_SetPriority(I2C1_EV_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(I2C1_EV_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
         HAL_NVIC_EnableIRQ(I2C1_EV_IRQn);
     }
     else if(i2c_handle->Instance == I2C2)
@@ -755,7 +756,7 @@ extern "C" void HAL_I2C_MspInit(I2C_HandleTypeDef* i2c_handle)
         __HAL_RCC_I2C2_CLK_ENABLE();
         __HAL_RCC_DMA1_CLK_ENABLE();
 
-        HAL_NVIC_SetPriority(I2C2_EV_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(I2C2_EV_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
         HAL_NVIC_EnableIRQ(I2C2_EV_IRQn);
     }
     else if(i2c_handle->Instance == I2C3)
@@ -765,7 +766,7 @@ extern "C" void HAL_I2C_MspInit(I2C_HandleTypeDef* i2c_handle)
         __HAL_RCC_I2C3_CLK_ENABLE();
         __HAL_RCC_DMA1_CLK_ENABLE();
 
-        HAL_NVIC_SetPriority(I2C3_EV_IRQn, 0, 0);
+        HAL_NVIC_SetPriority(I2C3_EV_IRQn, DSY_IRQ_PRIO_SERIAL_BUS, 0);
         HAL_NVIC_EnableIRQ(I2C3_EV_IRQn);
     }
     else if(i2c_handle->Instance == I2C4)
