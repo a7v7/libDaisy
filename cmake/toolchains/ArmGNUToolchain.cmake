@@ -39,8 +39,8 @@ set(CMAKE_CXX_ARCHIVE_FINISH "<CMAKE_RANLIB> <TARGET>")
 
 # -Wl,--gc-sections     Perform the dead code elimination.
 # --specs=nano.specs    Link with newlib-nano.
-# --specs=nosys.specs   No syscalls, provide empty implementations for the POSIX system calls.
-set(CMAKE_EXE_LINKER_FLAGS "--specs=nano.specs --specs=nosys.specs" CACHE INTERNAL "Linker options")
+# System calls come from libDaisy (src/sys/syscalls.c), not libnosys.
+set(CMAKE_EXE_LINKER_FLAGS "--specs=nano.specs" CACHE INTERNAL "Linker options")
 
 # ---------------------------------------------------------------------------------------
 # Set debug/release build configuration Options
