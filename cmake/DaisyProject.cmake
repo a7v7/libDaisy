@@ -54,6 +54,9 @@ add_compile_options($<$<CONFIG:Release,MinSizeRel,RelWithDebInfo>:-flto>)
 daisy_targets(compile_options $<$<CONFIG:Release,MinSizeRel,RelWithDebInfo>:-flto>)
 
 add_link_options($<$<CONFIG:Release,MinSizeRel,RelWithDebInfo>:-flto>)
+# One LTO partition: whole-program optimization without GCC's parallel
+# LTRANS jobs, which need make on the host and print a note when serial.
+add_link_options($<$<AND:$<CONFIG:Release,MinSizeRel,RelWithDebInfo>,$<CXX_COMPILER_ID:GNU>>:-flto-partition=one>)
 daisy_targets(link_options $<$<CONFIG:Release,MinSizeRel,RelWithDebInfo>:-flto>)
 
 # Include debug symbols when compiling with debug flags

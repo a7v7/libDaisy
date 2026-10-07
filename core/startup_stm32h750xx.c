@@ -1355,7 +1355,7 @@ void SAI4_IRQHandler()                __attribute__ ((weak, alias ("Default_Hand
 void WAKEUP_PIN_IRQHandler()          __attribute__ ((weak, alias ("Default_Handler")));
 #endif
 
-void * g_pfnVectors[0xa6] __attribute__ ((section (".isr_vector"), used)) = 
+void * const g_pfnVectors[0xa6] __attribute__ ((section (".isr_vector"), used)) = 
 {
 	&_estack,
 	&Reset_Handler,

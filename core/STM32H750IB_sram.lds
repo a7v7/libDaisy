@@ -27,7 +27,7 @@ SECTIONS
 	{
 		. = ALIGN(4);
 		KEEP(*(.isr_vector))
-		. = ALIGN(4);
+		. = ALIGN(16);
 	} > SRAM
 
 	.text :
@@ -67,14 +67,14 @@ SECTIONS
 
 	.ARM.attributes 0 : { *(.ARM.attributes) }
 
-	.preinit_array :
+	.preinit_array (READONLY) :
 	{
 		PROVIDE_HIDDEN(__preinit_array_start = .);
 		KEEP(*(.preinit_array*))
 		PROVIDE_HIDDEN(__preinit_array_end = .);
 	} > SRAM
 
-	.init_array :
+	.init_array (READONLY) :
 	{
 		PROVIDE_HIDDEN(__init_array_start = .);
 		KEEP(*(SORT(.init_array.*)))
@@ -82,7 +82,7 @@ SECTIONS
 		PROVIDE_HIDDEN(__init_array_end = .);
 	} > SRAM
 
-	.fini_array :
+	.fini_array (READONLY) :
 	{
 		PROVIDE_HIDDEN(__fini_array_start = .);
 		KEEP(*(.fini_array*))
@@ -112,7 +112,7 @@ SECTIONS
 		PROVIDE(__data_start__ = _sdata);
 		*(.data)
 		*(.data*)
-		. = ALIGN(4);
+		. = ALIGN(8);
 		_edata = .;
 
 		PROVIDE(__data_end__ = _edata);
@@ -248,6 +248,7 @@ SECTIONS
 	} > RAM_D2
 
 	PROVIDE(end = .);
+	PROVIDE(_heap_limit = ORIGIN(RAM_D2) + LENGTH(RAM_D2));
 
 	.reserved_for_stack (NOLOAD) :
 	{

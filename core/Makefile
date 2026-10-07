@@ -50,7 +50,8 @@ SYSTEM_FILES_DIR ?= \
 CPP_SOURCES ?=
 
 C_SOURCES += \
-$(SYSTEM_FILES_DIR)/startup_stm32h750xx.c
+$(SYSTEM_FILES_DIR)/startup_stm32h750xx.c \
+$(LIBDAISY_DIR)/src/sys/syscalls.c
 
 # Expose platform configuration to all compilation units (CMSIS DSP components)
 C_INCLUDES += -include stm32h7xx.h
@@ -82,6 +83,17 @@ SZ = $(PREFIX)size
 endif
 HEX = $(CP) -O ihex
 BIN = $(CP) -O binary -S
+
+# meadow targets a modern toolchain: the linker scripts use READONLY
+# (binutils 2.38+), and the build is expected to be warning-free on it.
+DAISY_MIN_GCC_VERSION = 13.3
+GCC_VERSION := $(shell $(CC) -dumpfullversion 2>/dev/null)
+ifneq ($(GCC_VERSION),)
+GCC_VERSION_LOWEST := $(shell printf '%s\n' $(DAISY_MIN_GCC_VERSION) $(GCC_VERSION) | sort -V | head -n1)
+ifneq ($(GCC_VERSION_LOWEST),$(DAISY_MIN_GCC_VERSION))
+$(error libDaisy (meadow) needs Arm GNU Toolchain $(DAISY_MIN_GCC_VERSION) or newer; found GCC $(GCC_VERSION))
+endif
+endif
 
 #######################################
 # CFLAGS
@@ -250,7 +262,7 @@ endif
 # LDFLAGS
 #######################################
 # libraries
-LIBS += -ldaisy -lc -lm -lnosys
+LIBS += -ldaisy -lc -lm
 LIBDIR += -L$(LIBDAISY_DIR)/build
 #LIBDIR = -L./VisualGDB/Release
 
@@ -266,7 +278,7 @@ LIBDIR += -L $(DAISYSP_DIR)/DaisySP-LGPL/build
 endif
 
 LDFLAGS ?=
-LDFLAGS += $(MCU) --specs=nano.specs --specs=nosys.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections -Wl,--print-memory-usage
+LDFLAGS += $(MCU) --specs=nano.specs -T$(LDSCRIPT) $(LIBDIR) $(LIBS) -Wl,-Map=$(BUILD_DIR)/$(TARGET).map,--cref -Wl,--gc-sections -Wl,--print-memory-usage
 
 # default action: build all
 all: $(BUILD_DIR)/$(TARGET).elf $(BUILD_DIR)/$(TARGET).hex $(BUILD_DIR)/$(TARGET).bin

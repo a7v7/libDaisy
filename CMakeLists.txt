@@ -10,6 +10,16 @@ endif()
 # Declare our project
 project(libDaisy VERSION 7.0.1)
 
+# meadow targets a modern toolchain: the linker scripts use READONLY
+# (binutils 2.38+), and the build is expected to be warning-free on it.
+set(DAISY_MIN_GCC_VERSION 13.3)
+if(CMAKE_C_COMPILER_ID STREQUAL "GNU"
+   AND CMAKE_C_COMPILER_VERSION VERSION_LESS DAISY_MIN_GCC_VERSION)
+    message(FATAL_ERROR
+        "libDaisy (meadow) needs Arm GNU Toolchain ${DAISY_MIN_GCC_VERSION} "
+        "or newer; found GCC ${CMAKE_C_COMPILER_VERSION} at ${CMAKE_C_COMPILER}")
+endif()
+
 # Append our /cmake to the module path
 # This allows us to use DaisyProject as `include(DaisyProject)`
 list(APPEND CMAKE_MODULE_PATH "${CMAKE_CURRENT_LIST_DIR}/cmake")
@@ -26,6 +36,9 @@ else()
     )
     add_compile_options($<$<CONFIG:Release,MinSizeRel,RelWithDebInfo>:-flto>)
     add_link_options($<$<CONFIG:Release,MinSizeRel,RelWithDebInfo>:-flto>)
+    # One LTO partition: whole-program optimization without GCC's parallel
+    # LTRANS jobs, which need make on the host and print a note when serial.
+    add_link_options($<$<AND:$<CONFIG:Release,MinSizeRel,RelWithDebInfo>,$<CXX_COMPILER_ID:GNU>>:-flto-partition=one>)
 
     # Define NDEBUG when not compiling with debug flags
     add_compile_definitions($<$<CONFIG:Release,MinSizeRel>:NDEBUG>)
@@ -115,6 +128,13 @@ target_link_libraries(daisy PUBLIC
     STM32_USB_DEVICE_LIBRARY
     STM32_USB_HOST_LIBRARY
     FatFs
+)
+
+# System calls for newlib. These are compiled into each executable instead of
+# libdaisy.a: the C library is searched after libdaisy.a, so it would never
+# find them in the archive.
+target_sources(daisy INTERFACE
+    $<$<C_COMPILER_ID:GNU>:${MODULE_DIR}/sys/syscalls.c>
 )
 
 # There is a abstract `IReader` interface that allows that can be swappped out
