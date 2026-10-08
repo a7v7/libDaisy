@@ -4,6 +4,10 @@
 
 <!-- Add new changes here! -->
 
+### Bug fixes
+
+- Audio: The audio callback could be silently lost, leaving the output repeating a stale buffer. With LTO, when `main()` ends in a loop that does work but never reads the callback pointer, GCC can remove the store in `StartAudio()` as dead. The callback pointers are now `volatile`, and they are set before the DMA starts.
+
 ## v9.0.0
 
 ### Features
