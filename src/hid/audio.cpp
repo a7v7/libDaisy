@@ -85,7 +85,11 @@ class AudioHandle::Impl
     // Internal Callback
     static void InternalCallback(int32_t* in, int32_t* out, size_t size);
 
-    void *callback_, *interleaved_callback_;
+    // Written by the application, read in the audio DMA interrupt. volatile
+    // keeps the compiler from discarding the write: when main() ends in a
+    // loop that never reads them, nothing else in the thread observes them.
+    void* volatile callback_;
+    void* volatile interleaved_callback_;
 
     // Data
     AudioHandle::Config config_;
@@ -169,6 +173,9 @@ AudioHandle::Result AudioHandle::Impl::DeInit()
 AudioHandle::Result
 AudioHandle::Impl::Start(AudioHandle::AudioCallback callback)
 {
+    // Set the callback before the DMA starts, so the first interrupt sees it
+    callback_             = (void*)callback;
+    interleaved_callback_ = nullptr;
     // Get instance of object
     if(sai2_.IsInitialized())
     {
@@ -180,21 +187,20 @@ AudioHandle::Impl::Start(AudioHandle::AudioCallback callback)
                    buff_tx_[0],
                    config_.blocksize * 2 * 2,
                    audio_handle.InternalCallback);
-    callback_             = (void*)callback;
-    interleaved_callback_ = nullptr;
     return Result::OK;
 }
 
 AudioHandle::Result
 AudioHandle::Impl::Start(AudioHandle::InterleavingAudioCallback callback)
 {
+    // Set the callback before the DMA starts, so the first interrupt sees it
+    interleaved_callback_ = (void*)callback;
+    callback_             = nullptr;
     // Get instance of object
     sai1_.StartDma(buff_rx_[0],
                    buff_tx_[0],
                    config_.blocksize * 2 * 2,
                    audio_handle.InternalCallback);
-    interleaved_callback_ = (void*)callback;
-    callback_             = nullptr;
     return Result::OK;
 }
 
@@ -281,11 +287,14 @@ void AudioHandle::Impl::InternalCallback(int32_t* in, int32_t* out, size_t size)
     chns = audio_handle.GetChannels();
     if(chns == 0)
         return;
+    // Read each callback once: the application may change them at any time
+    void* const interleaved_cb     = audio_handle.interleaved_callback_;
+    void* const non_interleaved_cb = audio_handle.callback_;
     // Handle Interleaved / Non Interleaved separate
-    if(audio_handle.interleaved_callback_)
+    if(interleaved_cb)
     {
         InterleavingAudioCallback cb
-            = (InterleavingAudioCallback)audio_handle.interleaved_callback_;
+            = (InterleavingAudioCallback)interleaved_cb;
         float fin[size];
         float fout[size];
         // There _must_ be a more elegant way to do this....
@@ -348,9 +357,9 @@ void AudioHandle::Impl::InternalCallback(int32_t* in, int32_t* out, size_t size)
             default: break;
         }
     }
-    else if(audio_handle.callback_)
+    else if(non_interleaved_cb)
     {
-        AudioCallback cb = (AudioCallback)audio_handle.callback_;
+        AudioCallback cb = (AudioCallback)non_interleaved_cb;
         // offset needed for 2nd audio codec.
         size_t offset    = audio_handle.sai2_.GetOffset();
         size_t buff_size = chns > 2 ? size * 2 : size;

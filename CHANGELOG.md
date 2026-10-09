@@ -9,6 +9,10 @@
 - System: Interrupt priorities are now defined in one place (`src/sys/irq_priority.h`), and the audio DMA interrupt can preempt all other interrupts. Previously nearly every interrupt was at level 0, so SD card, display or USB interrupts could delay the audio callback. See `doc/md/_b2_Development-Interrupt-Priorities.md`.
 - TIM: Added `TimerHandle::Config::irq_priority`. The default (`DSY_IRQ_PRIO_TIMER_LOW`) keeps the previous lowest-priority behavior; `DSY_IRQ_PRIO_TIMER_HIGH` places a timer just below audio for musical timing.
 
+### Bug fixes
+
+- Audio: The audio callback could be silently lost, leaving the output repeating a stale buffer. With LTO, when `main()` ends in a loop that does work but never reads the callback pointer, GCC can remove the store in `StartAudio()` as dead. The callback pointers are now `volatile`, and they are set before the DMA starts.
+
 ## v9.0.0
 
 ### Features
