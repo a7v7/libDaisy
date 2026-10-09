@@ -67,6 +67,7 @@ The chart needs matplotlib; the statistics don't.
 
 ## Notes
 
+- **This is a timing test, not an audio-quality test.** The load makes the CPU swing between a 300 µs busy-wait and idle 1,250 times a second, and on a Daisy Pod that supply-current pattern is audible as a low whine (around 1 kHz) in the passthrough audio. The same board passes audio cleanly without the load: a passthrough build with the SAI's overrun/underrun flag monitored ran 13.6 minutes with no errors and no audible noise. The whine is electrical, not lost samples.
 - **The main loop contains a compiler barrier** (`__asm volatile("" ::: "memory")`). Without it, a CMake/LTO build of stock libDaisy can lose the audio callback entirely: GCC deletes the store of the callback pointer in `StartAudio()`, because this loop never reads it, and the output becomes a steady tone. That bug is fixed separately on the `audio-callback-volatile` branch. The barrier keeps this test working on unpatched libDaisy.
 - **About the included data:** `data/before.csv` and `data/after.csv` were captured with an earlier version of this program, which got around the lost-callback bug by building against the `audio-callback-volatile` fix rather than using the barrier. Their timing behavior is the same as this version's.
 - **Audio interrupt overhead:** after the change, the DAC's 300 µs pulse stretches to about 315 µs, because the audio interrupt now preempts it. That puts libDaisy's whole audio interrupt at about 14 µs per block, including the int↔float conversion. The callback itself takes 0.5 µs here.
