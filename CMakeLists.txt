@@ -52,6 +52,11 @@ add_subdirectory(Drivers)
 add_subdirectory(Middlewares/ST)
 add_subdirectory(Middlewares/Third_Party/FatFs)
 
+# Floret run-to-completion kernel (git submodule). Set FLORET_DIR to use
+# another checkout, for example while developing Floret itself.
+set(FLORET_DIR "${CMAKE_CURRENT_LIST_DIR}/Middlewares/floret" CACHE PATH "Floret source directory")
+add_subdirectory(${FLORET_DIR} ${CMAKE_CURRENT_BINARY_DIR}/floret)
+
 add_library(daisy STATIC
     ${MODULE_DIR}/daisy_field.cpp
     ${MODULE_DIR}/daisy_legio.cpp
@@ -128,6 +133,7 @@ target_link_libraries(daisy PUBLIC
     STM32_USB_DEVICE_LIBRARY
     STM32_USB_HOST_LIBRARY
     FatFs
+    floret
 )
 
 # System calls for newlib. These are compiled into each executable instead of
@@ -136,6 +142,11 @@ target_link_libraries(daisy PUBLIC
 target_sources(daisy INTERFACE
     $<$<C_COMPILER_ID:GNU>:${MODULE_DIR}/sys/syscalls.c>
 )
+
+# The Floret port, compiled into each executable for the same reason: the
+# floret library is searched after libdaisy.a, so it couldn't find the port
+# functions inside the archive.
+target_sources(daisy INTERFACE ${MODULE_DIR}/sys/floret_port.cpp)
 
 # There is a abstract `IReader` interface that allows that can be swappped out
 # for other i/o, but libDaisy assumes FatFS will always be present.

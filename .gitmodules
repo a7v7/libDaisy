@@ -16,3 +16,6 @@
 [submodule "Middlewares/ST/STM32_USB_Device_Library"]
 	path = Middlewares/ST/STM32_USB_Device_Library
 	url = https://github.com/STMicroelectronics/stm32_mw_usb_device
+[submodule "Middlewares/floret"]
+	path = Middlewares/floret
+	url = https://github.com/a7v7/floret
