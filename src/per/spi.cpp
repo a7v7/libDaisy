@@ -28,7 +28,14 @@ class SpiHandle::Impl
 
         bool IsValidJob() const
         {
-            return data_rx != nullptr && data_tx != nullptr;
+            switch(direction)
+            {
+                case SpiHandle::DmaDirection::TX: return data_tx != nullptr;
+                case SpiHandle::DmaDirection::RX: return data_rx != nullptr;
+                case SpiHandle::DmaDirection::RX_TX:
+                    return data_rx != nullptr && data_tx != nullptr;
+            }
+            return false;
         }
         void Invalidate() { data_rx = data_tx = nullptr; }
     };

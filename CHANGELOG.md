@@ -4,6 +4,10 @@
 
 <!-- Add new changes here! -->
 
+### Bug fixes
+
+- SPI: A DMA transmit or receive queued while another SPI DMA transfer was running was silently dropped: it never ran and its end callback never fired. `SpiDmaJob::IsValidJob()` required both an RX and a TX buffer, so a transmit-only or receive-only job never counted as queued. It now checks the buffer that matches the job's direction, as the UART queue does. Queued full-duplex transfers were not affected.
+
 ## v9.0.0
 
 ### Features
