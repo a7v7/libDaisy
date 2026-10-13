@@ -170,5 +170,9 @@ extern "C"
         HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
     }
 
-    void OTG_FS_IRQHandler(void) { HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS); }
+    // Weak, so TinyUSB (src/tinyusb) can take over this port.
+    __attribute__((weak)) void OTG_FS_IRQHandler(void)
+    {
+        HAL_PCD_IRQHandler(&hpcd_USB_OTG_FS);
+    }
 }

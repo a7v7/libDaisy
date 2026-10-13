@@ -148,6 +148,27 @@ target_sources(daisy INTERFACE
 # functions inside the archive.
 target_sources(daisy INTERFACE ${MODULE_DIR}/sys/floret_port.cpp)
 
+# TinyUSB, an alternative to the ST USB stack (see src/tinyusb/tinyusb_daisy.h).
+# An INTERFACE library: its sources are compiled into each executable that
+# links it, because TinyUSB is configured by the app's own tusb_config.h.
+#   target_link_libraries(${FIRMWARE_NAME} PRIVATE daisy_tinyusb)
+set(TINYUSB_SRC ${CMAKE_CURRENT_LIST_DIR}/Middlewares/tinyusb/src)
+add_library(daisy_tinyusb INTERFACE)
+target_sources(daisy_tinyusb INTERFACE
+    ${TINYUSB_SRC}/tusb.c
+    ${TINYUSB_SRC}/common/tusb_fifo.c
+    ${TINYUSB_SRC}/device/usbd.c
+    ${TINYUSB_SRC}/class/audio/audio_device.c
+    ${TINYUSB_SRC}/class/cdc/cdc_device.c
+    ${TINYUSB_SRC}/class/midi/midi_device.c
+    ${TINYUSB_SRC}/portable/synopsys/dwc2/dcd_dwc2.c
+    ${TINYUSB_SRC}/portable/synopsys/dwc2/dwc2_common.c
+    ${MODULE_DIR}/tinyusb/tinyusb_daisy.cpp
+)
+target_include_directories(daisy_tinyusb INTERFACE ${TINYUSB_SRC})
+target_compile_definitions(daisy_tinyusb INTERFACE CFG_TUSB_MCU=OPT_MCU_STM32H7)
+target_link_libraries(daisy_tinyusb INTERFACE daisy)
+
 # There is a abstract `IReader` interface that allows that can be swappped out
 # for other i/o, but libDaisy assumes FatFS will always be present.
 # It may make sense for this to move to better facillitate testing, etc.

@@ -113,7 +113,8 @@ extern "C"
             HAL_PCD_IRQHandler(&hpcd_USB_OTG_HS);
     }
 
-    void OTG_HS_IRQHandler(void)
+    // Weak, so TinyUSB (src/tinyusb) can take over this port.
+    __attribute__((weak)) void OTG_HS_IRQHandler(void)
     {
         if(hhcd_USB_OTG_HS.Instance)
             HAL_HCD_IRQHandler(&hhcd_USB_OTG_HS);

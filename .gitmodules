@@ -19,3 +19,7 @@
 [submodule "Middlewares/floret"]
 	path = Middlewares/floret
 	url = https://github.com/a7v7/floret
+[submodule "Middlewares/tinyusb"]
+	path = Middlewares/tinyusb
+	url = https://github.com/hathach/tinyusb.git
+	shallow = true
