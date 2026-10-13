@@ -29,6 +29,7 @@ add_subdirectory(Switch)
 add_subdirectory(Switch3)
 add_subdirectory(TCA9534_GPIO)
 add_subdirectory(TIM_SingleCallback)
+add_subdirectory(TinyUSB_Audio)
 add_subdirectory(TinyUSB_CDC_Echo)
 
 # Folders
