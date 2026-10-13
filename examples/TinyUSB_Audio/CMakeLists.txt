@@ -1,5 +1,5 @@
 set(FIRMWARE_NAME TinyUSB_Audio)
-set(FIRMWARE_SOURCES TinyUSB_Audio.cpp usb_descriptors.c)
+set(FIRMWARE_SOURCES TinyUSB_Audio.cpp usb_audio.cpp usb_descriptors.c)
 include(DaisyProject)
 
 # TinyUSB, configured by this folder's tusb_config.h
