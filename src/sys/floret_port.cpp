@@ -18,9 +18,13 @@
  *  of 48 at 48 kHz, one tick is exactly 1 ms.
  *
  *  Debugging a sleeping Floret: by default the STM32 stops the debug port's
- *  clocks during sleep, so a debugger or Downlink can't reach the chip. Set
- *  the "debug in sleep" bits in DBGMCU_CR (CubeProgrammer's "Debug in Low
- *  Power mode" option does this) when you need to.
+ *  clocks during sleep, and a Floret app sleeps most of the time, so a
+ *  debugger, STM32CubeProgrammer or Downlink couldn't connect except under
+ *  reset; the board would look dead. So the first sleep() sets the "debug in
+ *  sleep" bits in DBGMCU_CR (the same bits as CubeProgrammer's "Debug in Low
+ *  Power mode" option and Downlink). That keeps the debug clocks running in
+ *  sleep, costing a little power. Build with -DDSY_FLORET_DEBUG_IN_SLEEP=0 to
+ *  leave them off, for example on battery power.
  */
 #include "floret/floret_port.h"
 #include "stm32h7xx.h"
@@ -48,8 +52,22 @@ extern "C" void floret_port_unlock(uint32_t state)
     __set_PRIMASK(state);
 }
 
+#ifndef DSY_FLORET_DEBUG_IN_SLEEP
+#define DSY_FLORET_DEBUG_IN_SLEEP 1
+#endif
+
 extern "C" void floret_port_sleep(void)
 {
+#if DSY_FLORET_DEBUG_IN_SLEEP
+    static bool debug_in_sleep = false;
+    if(!debug_in_sleep) // once: keep the debug port reachable while asleep
+    {
+        DBGMCU->CR |= DBGMCU_CR_DBG_SLEEPD1 | DBGMCU_CR_DBG_STOPD1
+                      | DBGMCU_CR_DBG_STANDBYD1 | DBGMCU_CR_DBG_CKD1EN
+                      | DBGMCU_CR_DBG_CKD3EN;
+        debug_in_sleep = true;
+    }
+#endif
     __DSB();
     __WFI();
 }
