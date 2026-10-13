@@ -442,9 +442,12 @@ void UartHandler::Impl::QueueDmaTransfer(size_t uart_idx, const UartDmaJob& job)
 {
     // wait for any previous job on this peripheral to finish
     // and the queue position to become free
+    // The DMA interrupt frees the slot. The barrier makes GCC re-read it on
+    // every pass; without it the loop can be reduced to a single check, or
+    // removed entirely (-ffinite-loops), and the queued job overwritten.
     while(IsDmaTransferQueuedFor(uart_idx))
     {
-        continue;
+        __COMPILER_BARRIER();
     };
 
     // queue the job

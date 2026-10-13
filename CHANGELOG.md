@@ -4,6 +4,10 @@
 
 <!-- Add new changes here! -->
 
+### Bug fixes
+
+- SPI, I2C, UART: When a DMA transfer was already queued, queueing another was supposed to wait for the slot to free up. The wait polled a variable that only the DMA interrupt changes, so GCC 10+ removed it (`-ffinite-loops`, on by default at -O2 and above for C++), and the new job overwrote the queued one, which was then never sent. Built with `-fno-finite-loops`, it would hang instead. The wait loop now has a compiler barrier, so it re-reads the queue on every pass.
+
 ## v9.0.0
 
 ### Features

@@ -227,7 +227,13 @@ void I2CHandle::Impl::QueueDmaTransfer(size_t i2c_peripheral_idx,
 {
     // wait for any previous job on this peripheral to finish
     // and the queue position to bevome free
-    while(IsDmaTransferQueuedFor(i2c_peripheral_idx)) {};
+    // The DMA interrupt frees the slot. The barrier makes GCC re-read it on
+    // every pass; without it the loop can be reduced to a single check, or
+    // removed entirely (-ffinite-loops), and the queued job overwritten.
+    while(IsDmaTransferQueuedFor(i2c_peripheral_idx))
+    {
+        __COMPILER_BARRIER();
+    };
 
     // queue the job
     ScopedIrqBlocker block;
