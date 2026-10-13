@@ -3,6 +3,7 @@
  */
 #include "usb_audio.h"
 
+#include <math.h>
 #include <stdio.h>
 
 #include "tusb.h"
@@ -32,6 +33,23 @@ volatile bool in_streaming  = false; // host is reading recording
 // Running totals, written only in the audio interrupt.
 volatile uint32_t underruns = 0;
 volatile uint32_t overruns  = 0;
+
+// Playback mute and volume (the feature unit). The host reads and sets them
+// in UAC2 units: volume in 1/256 dB, from -60 dB to 0 dB in 1 dB steps.
+constexpr int16_t kVolumeMin  = -60 * 256;
+constexpr int16_t kVolumeMax  = 0;
+constexpr int16_t kVolumeStep = 256;
+int16_t           volume      = kVolumeMax; // thread context only
+bool              mute        = false;      // thread context only
+
+// The resulting linear gain: set in thread context, read in the audio
+// interrupt, which ramps to it over a block so changes don't click.
+volatile float target_gain = 1.0f;
+
+void UpdateGain()
+{
+    target_gain = mute ? 0.0f : powf(10.0f, (float)volume / (256.0f * 20.0f));
+}
 
 //--------------------------------------------------------------------+
 // Sample conversion. USB carries 24-bit samples left-justified in 32 bits.
@@ -90,12 +108,17 @@ void Process(AudioHandle::InputBuffer  in,
         playing = false;
     }
 
+    // Volume: ramp from the last block's gain to the target over this block.
+    static float gain   = 1.0f;
+    const float  target = target_gain;
+    const float  step   = (target - gain) / (float)size;
     for(size_t i = 0; i < size; i++)
     {
+        gain += step;
         if(i < frames)
         {
-            out[0][i] = UsbToFloat(usb[2 * i]);
-            out[1][i] = UsbToFloat(usb[2 * i + 1]);
+            out[0][i] = gain * UsbToFloat(usb[2 * i]);
+            out[1][i] = gain * UsbToFloat(usb[2 * i + 1]);
         }
         else
         {
@@ -103,6 +126,7 @@ void Process(AudioHandle::InputBuffer  in,
             out[1][i] = 0.0f;
         }
     }
+    gain = target; // exact, despite float rounding in the ramp
 
     // Recording: codec -> USB
     if(in_streaming)
@@ -147,16 +171,24 @@ void PrintStatus()
 
     if(tud_cdc_connected())
     {
-        char line[100];
+        char vol[12];
+        if(mute)
+            snprintf(vol, sizeof(vol), "mute");
+        else
+            snprintf(vol, sizeof(vol), "%d dB", volume / 256);
+        char line[140];
         snprintf(line,
                  sizeof(line),
-                 "out: %s fifo %4u  under %lu | in: %s fifo %4u  over %lu\r\n",
+                 "out: %s fifo %4u  under %lu  vol %s | in: %s fifo %4u  over %lu"
+                 " | fb %s\r\n",
                  out_streaming ? "on " : "off",
                  (unsigned)tud_audio_available(),
                  (unsigned long)(under - last_under),
+                 vol,
                  in_streaming ? "on " : "off",
                  (unsigned)tu_fifo_count(tud_audio_get_ep_in_ff()),
-                 (unsigned long)(over - last_over));
+                 (unsigned long)(over - last_over),
+                 usb_host_is_windows() ? "16.16 (Windows)" : "10.14");
         tud_cdc_write_str(line);
         tud_cdc_write_flush();
     }
@@ -171,13 +203,76 @@ void PrintStatus()
 //--------------------------------------------------------------------+
 extern "C"
 {
+    // The host reads the feature unit's mute, volume and volume range.
+    // Only the master channel (0) has controls.
+    static bool GetFeatureUnit(uint8_t rhport, tusb_control_request_t const* p_request)
+    {
+        const uint8_t ctrl    = TU_U16_HIGH(p_request->wValue);
+        const uint8_t channel = TU_U16_LOW(p_request->wValue);
+        if(channel != 0)
+            return false;
+        if(ctrl == AUDIO20_FU_CTRL_MUTE && p_request->bRequest == AUDIO20_CS_REQ_CUR)
+        {
+            audio20_control_cur_1_t cur = {(int8_t)mute};
+            return tud_audio_buffer_and_schedule_control_xfer(
+                rhport, p_request, &cur, sizeof(cur));
+        }
+        if(ctrl == AUDIO20_FU_CTRL_VOLUME)
+        {
+            if(p_request->bRequest == AUDIO20_CS_REQ_CUR)
+            {
+                audio20_control_cur_2_t cur = {(int16_t)volume};
+                return tud_audio_buffer_and_schedule_control_xfer(
+                    rhport, p_request, &cur, sizeof(cur));
+            }
+            if(p_request->bRequest == AUDIO20_CS_REQ_RANGE)
+            {
+                audio20_control_range_2_n_t(1) range = {};
+                range.wNumSubRanges                  = 1;
+                range.subrange[0].bMin               = kVolumeMin;
+                range.subrange[0].bMax               = kVolumeMax;
+                range.subrange[0].bRes               = kVolumeStep;
+                return tud_audio_buffer_and_schedule_control_xfer(
+                    rhport, p_request, &range, sizeof(range));
+            }
+        }
+        return false;
+    }
+
+    // The host sets the feature unit's mute or volume.
+    static bool SetFeatureUnit(tusb_control_request_t const* p_request, uint8_t const* buf)
+    {
+        const uint8_t ctrl    = TU_U16_HIGH(p_request->wValue);
+        const uint8_t channel = TU_U16_LOW(p_request->wValue);
+        if(channel != 0 || p_request->bRequest != AUDIO20_CS_REQ_CUR)
+            return false;
+        if(ctrl == AUDIO20_FU_CTRL_MUTE
+           && p_request->wLength == sizeof(audio20_control_cur_1_t))
+        {
+            mute = ((audio20_control_cur_1_t const*)buf)->bCur != 0;
+            UpdateGain();
+            return true;
+        }
+        if(ctrl == AUDIO20_FU_CTRL_VOLUME
+           && p_request->wLength == sizeof(audio20_control_cur_2_t))
+        {
+            int16_t v = (int16_t)tu_le16toh(((audio20_control_cur_2_t const*)buf)->bCur);
+            volume    = v < kVolumeMin ? kVolumeMin : (v > kVolumeMax ? kVolumeMax : v);
+            UpdateGain();
+            return true;
+        }
+        return false;
+    }
+
     // The host reads the clock's sample rate, its range, and whether it's
-    // valid. The clock is fixed at 48 kHz.
+    // valid (the clock is fixed at 48 kHz), and the feature unit's controls.
     bool tud_audio_get_req_entity_cb(uint8_t                       rhport,
                                      tusb_control_request_t const* p_request)
     {
         const uint8_t entity = TU_U16_HIGH(p_request->wIndex);
         const uint8_t ctrl   = TU_U16_HIGH(p_request->wValue);
+        if(entity == UAC2_ENTITY_OUT_FEATURE_UNIT)
+            return GetFeatureUnit(rhport, p_request);
         if(entity != UAC2_ENTITY_CLOCK)
             return false;
 
@@ -210,7 +305,8 @@ extern "C"
         return false;
     }
 
-    // The host may set the sample rate. Only 48 kHz is accepted.
+    // The host may set the sample rate (only 48 kHz is accepted), and the
+    // feature unit's mute and volume.
     bool tud_audio_set_req_entity_cb(uint8_t                       rhport,
                                      tusb_control_request_t const* p_request,
                                      uint8_t*                      buf)
@@ -218,6 +314,8 @@ extern "C"
         (void)rhport;
         const uint8_t entity = TU_U16_HIGH(p_request->wIndex);
         const uint8_t ctrl   = TU_U16_HIGH(p_request->wValue);
+        if(entity == UAC2_ENTITY_OUT_FEATURE_UNIT)
+            return SetFeatureUnit(p_request, buf);
         if(entity == UAC2_ENTITY_CLOCK && ctrl == AUDIO20_CS_CTRL_SAM_FREQ
            && p_request->bRequest == AUDIO20_CS_REQ_CUR
            && p_request->wLength == sizeof(audio20_control_cur_4_t))
@@ -272,9 +370,11 @@ extern "C"
         feedback_param->sample_freq = kSampleRate;
     }
 
+    // Bus reset or disconnect: the next host may be a different one.
     void tud_umount_cb(void)
     {
         out_streaming = false;
         in_streaming  = false;
+        usb_host_forget();
     }
 }

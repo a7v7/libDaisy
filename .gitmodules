@@ -21,5 +21,6 @@
 	url = https://github.com/a7v7/floret
 [submodule "Middlewares/tinyusb"]
 	path = Middlewares/tinyusb
-	url = https://github.com/hathach/tinyusb.git
+	url = https://github.com/a7v7/tinyusb.git
 	shallow = true
+	branch = daisy

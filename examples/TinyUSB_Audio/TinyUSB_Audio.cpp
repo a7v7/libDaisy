@@ -10,7 +10,7 @@
  *
  *  The serial port prints a status line once a second (see usb_audio.h):
  *
- *      out: on  fifo  784  under 0 | in: on  fifo  776  over 0
+ *      out: on  fifo  784  under 0  vol -12 dB | in: on  fifo  776  over 0 | fb 10.14
  *
  *  While streaming steadily, under and over should both stay 0. The LED is
  *  on while either direction is streaming.

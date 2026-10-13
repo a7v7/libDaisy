@@ -3,13 +3,16 @@
  *  The audio function is a stereo line output (host to Daisy) and a stereo
  *  line input (Daisy to host), both on one internal 48 kHz clock:
  *
- *      USB OUT  -> [IT 0x01 USB streaming] -> [OT 0x03 line out]
- *      line in  -> [IT 0x11 line in]       -> [OT 0x13 USB streaming] -> USB IN
+ *      USB OUT -> [IT 0x01 USB streaming] -> [FU 0x02 mute, volume] -> [OT 0x03 line out]
+ *      line in -> [IT 0x11 line in]       -> [OT 0x13 USB streaming] -> USB IN
+ *
+ *  The feature unit has one master mute and volume for both channels: the
+ *  host's volume slider sets the Daisy's playback level (macOS shows no
+ *  slider at all without one).
  *
  *  Based on TinyUSB's uac2_headset and uac2_speaker_fb examples (MIT
  *  License, Copyright (c) 2020 Ha Thach, tinyusb.org). Unlike the headset,
- *  playback here is asynchronous with a feedback endpoint, and there's no
- *  feature unit (volume/mute), so the host does volume in software.
+ *  playback here is asynchronous with a feedback endpoint.
  */
 #pragma once
 #ifndef USB_DESCRIPTORS_H_
@@ -30,6 +33,7 @@ enum
 // Entity IDs
 #define UAC2_ENTITY_CLOCK 0x04
 #define UAC2_ENTITY_OUT_INPUT_TERMINAL 0x01  // USB streaming in
+#define UAC2_ENTITY_OUT_FEATURE_UNIT 0x02    // playback mute and volume
 #define UAC2_ENTITY_OUT_OUTPUT_TERMINAL 0x03 // line out
 #define UAC2_ENTITY_IN_INPUT_TERMINAL 0x11   // line in
 #define UAC2_ENTITY_IN_OUTPUT_TERMINAL 0x13  // USB streaming out
@@ -43,6 +47,7 @@ enum
 
 #define DAISY_UAC2_AC_TOTAL_LEN                                     \
     (TUD_AUDIO20_DESC_CLK_SRC_LEN + TUD_AUDIO20_DESC_INPUT_TERM_LEN \
+     + TUD_AUDIO20_DESC_FEATURE_UNIT_LEN(2)                         \
      + TUD_AUDIO20_DESC_OUTPUT_TERM_LEN + TUD_AUDIO20_DESC_INPUT_TERM_LEN \
      + TUD_AUDIO20_DESC_OUTPUT_TERM_LEN)
 
@@ -76,7 +81,7 @@ enum
                                  | (AUDIO20_CTRL_R << AUDIO20_CLOCK_SOURCE_CTRL_CLK_VAL_POS),                \
                              0x00,                                                                           \
                              0x00),                                                                          \
-    /* Playback path: USB streaming -> line out */                                                           \
+    /* Playback path: USB streaming -> mute and volume -> line out */                                        \
     TUD_AUDIO20_DESC_INPUT_TERM(UAC2_ENTITY_OUT_INPUT_TERMINAL,                                              \
                                 AUDIO_TERM_TYPE_USB_STREAMING,                                               \
                                 0x00,                                                                        \
@@ -86,10 +91,18 @@ enum
                                 0x00,                                                                        \
                                 0x0000,                                                                      \
                                 0x00),                                                                       \
+    /* Feature Unit (4.7.2.8): master mute and volume, none per channel */                                   \
+    TUD_AUDIO20_DESC_FEATURE_UNIT(UAC2_ENTITY_OUT_FEATURE_UNIT,                                              \
+                                  UAC2_ENTITY_OUT_INPUT_TERMINAL,                                            \
+                                  0x00,                                                                      \
+                                  (AUDIO20_CTRL_RW << AUDIO20_FEATURE_UNIT_CTRL_MUTE_POS)                    \
+                                      | (AUDIO20_CTRL_RW << AUDIO20_FEATURE_UNIT_CTRL_VOLUME_POS),           \
+                                  0x00000000,                                                                \
+                                  0x00000000),                                                               \
     TUD_AUDIO20_DESC_OUTPUT_TERM(UAC2_ENTITY_OUT_OUTPUT_TERMINAL,                                            \
                                  DAISY_TERM_TYPE_LINE,                                                       \
                                  0x00,                                                                       \
-                                 UAC2_ENTITY_OUT_INPUT_TERMINAL,                                             \
+                                 UAC2_ENTITY_OUT_FEATURE_UNIT,                                               \
                                  UAC2_ENTITY_CLOCK,                                                          \
                                  0x0000,                                                                     \
                                  0x00),                                                                      \
@@ -132,7 +145,8 @@ enum
                                   AUDIO20_CTRL_NONE,                                                         \
                                   AUDIO20_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_MILLISEC,                        \
                                   0x0001),                                                                   \
-    /* Feedback: 4 bytes in 16.16 format, every 1 ms */                                                      \
+    /* Feedback every 1 ms: 16.16 in 4 bytes to Windows, 10.14 in 3 to other */                             \
+    /* hosts (usb_descriptors.c); a 3-byte packet fits the 4-byte endpoint */                                \
     TUD_AUDIO20_DESC_STD_AS_ISO_FB_EP(_epfb, 4, 0x01),                                                       \
     /* Recording streaming interface. Alt 0: no bandwidth (idle) */                                          \
     TUD_AUDIO20_DESC_STD_AS_INT(ITF_NUM_AUDIO_STREAMING_IN, 0x00, 0x00, 0x00),                               \
@@ -156,5 +170,21 @@ enum
                                   AUDIO20_CTRL_NONE,                                                         \
                                   AUDIO20_CS_AS_ISO_DATA_EP_LOCK_DELAY_UNIT_UNDEFINED,                       \
                                   0x0000)
+
+#ifdef __cplusplus
+extern "C"
+{
+#endif
+
+/** Whether the host has asked for the Microsoft OS 2.0 descriptors during
+ *  enumeration, which only Windows does (see usb_descriptors.c). */
+bool usb_host_is_windows(void);
+
+/** Forget the host, on a bus reset or disconnect. */
+void usb_host_forget(void);
+
+#ifdef __cplusplus
+}
+#endif
 
 #endif

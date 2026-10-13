@@ -48,9 +48,11 @@ uint32_t Underruns();
 uint32_t Overruns();
 
 /** Prints a status line to the CDC port, if a terminal has it open:
- *      out: on  fifo  784  under 0 | in: on  fifo  776  over 0
+ *      out: on  fifo  784  under 0  vol -12 dB | in: on  fifo  776  over 0 | fb 10.14
  *  fifo is bytes waiting in TinyUSB's FIFO (1 ms of audio is 384); under
- *  and over count since the previous call. Call about once a second. */
+ *  and over count since the previous call; vol is the host's playback
+ *  volume (or "mute"); fb is the feedback format sent to this host: 16.16
+ *  for Windows, the spec's 10.14 for others. Call about once a second. */
 void PrintStatus();
 
 } // namespace usb_audio
