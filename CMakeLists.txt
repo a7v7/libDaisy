@@ -57,6 +57,10 @@ add_subdirectory(Middlewares/Third_Party/FatFs)
 set(FLORET_DIR "${CMAKE_CURRENT_LIST_DIR}/Middlewares/floret" CACHE PATH "Floret source directory")
 add_subdirectory(${FLORET_DIR} ${CMAKE_CURRENT_BINARY_DIR}/floret)
 
+# Floret's telemetry block in DTCM: the debug probe (Downlink) reads RAM
+# directly, and DTCM, unlike the main SRAM, is never held in the data cache.
+target_compile_definitions(floret PRIVATE FLORET_TELEMETRY_SECTION=.dtcmram_bss)
+
 add_library(daisy STATIC
     ${MODULE_DIR}/daisy_field.cpp
     ${MODULE_DIR}/daisy_legio.cpp

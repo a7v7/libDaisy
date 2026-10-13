@@ -1531,6 +1531,7 @@ int main();
 
 extern void *_sidata, *_sdata, *_edata;
 extern void *_sbss, *_ebss;
+extern void *_sdtcmram_bss, *_edtcmram_bss;
 
 void __attribute__((noreturn)) Reset_Handler()
 {
@@ -1545,6 +1546,12 @@ void __attribute__((noreturn)) Reset_Handler()
 		*pDest = *pSource;
 
 	for (pDest = &_sbss; pDest != &_ebss; pDest++)
+		*pDest = 0;
+
+	// DTCM_MEM_SECTION (.dtcmram_bss) is bss too, so it starts at zero. DTCM
+	// keeps its contents through a reset, so without this a variable there
+	// would start with whatever the previous run left.
+	for (pDest = &_sdtcmram_bss; pDest != &_edtcmram_bss; pDest++)
 		*pDest = 0;
 
 	#ifndef BOOT_APP
